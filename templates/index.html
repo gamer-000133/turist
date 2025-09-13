@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="text-center mb-5">
+            <h1 class="display-4">🛡️ Smart Tourist Safety Monitoring</h1>
+            <p class="lead">Advanced AI-powered safety system for tourists with real-time monitoring and emergency response</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h3>👤 Tourist Portal</h3>
+                        <p>Register, get your digital ID, and access safety features</p>
+                        <ul class="list-unstyled">
+                            <li>✅ Digital Tourist ID with QR Code</li>
+                            <li>🆘 Emergency Panic Button</li>
+                            <li>🗺️ Live Location Tracking</li>
+                            <li>🌍 Multilingual Support</li>
+                        </ul>
+                        <a href="/tourist" class="btn btn-primary btn-lg">Enter Tourist Portal</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h3>👮 Police Dashboard</h3>
+                        <p>Monitor tourists, receive alerts, and manage incidents</p>
+                        <ul class="list-unstyled">
+                            <li>📊 Live Tourist Heatmap</li>
+                            <li>🚨 Real-time Alerts</li>
+                            <li>🤖 AI Anomaly Detection</li>
+                            <li>📋 E-FIR Management</li>
+                        </ul>
+                        <a href="/police_login" class="btn btn-success btn-lg">Enter Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-4">
+            <h5>🤖 AI Features:</h5>
+            <p class="mb-0">Our system automatically detects tourist inactivity (>15 min) and route deviations, sending instant alerts to authorities.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

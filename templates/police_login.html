@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Police Login - Smart Tourist Safety{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card glow floating">
+            <div class="card-header text-center">
+                <h3 class="text-glow">👮 Police Dashboard Login</h3>
+                <p class="text-muted">Authorized Personnel Only</p>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-danger">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" action="/police_auth">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">🔐 Login to Dashboard</button>
+                </form>
+                
+                <hr>
+                <div class="text-center">
+                    <a href="/" class="btn btn-outline-secondary">← Back to Home</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-4">
+            <h6>🔒 Security Notice:</h6>
+            <p class="mb-0">This dashboard contains sensitive information. Only authorized police personnel should access this system.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Live Alerts Monitor - Police{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>🚨 Live Alerts Monitor</h3>
+                <div>
+                    <span class="badge bg-success" id="refreshStatus">Auto-refresh: ON</span>
+                    <span class="badge bg-info" id="lastUpdate"></span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="alertsContainer">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading alerts...</span>
+                        </div>
+                        <p class="mt-2">Loading alerts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="alertDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alert Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="alertDetailsBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="resolveAlertBtn">Resolve Alert</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let refreshInterval;
+let currentAlertId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAlerts();
+    startAutoRefresh();
+});
+
+function startAutoRefresh() {
+    refreshInterval = setInterval(() => {
+        loadAlerts();
+    }, 10000); // Refresh every 10 seconds
+}
+
+async function loadAlerts() {
+    try {
+        const response = await fetch('/api/alerts');
+        const alerts = await response.json();
+        
+        displayAlerts(alerts);
+        updateLastRefreshTime();
+        
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+        document.getElementById('alertsContainer').innerHTML = 
+            '<div class="alert alert-danger">Error loading alerts. Please refresh the page.</div>';
+    }
+}
+
+function displayAlerts(alerts) {
+    const container = document.getElementById('alertsContainer');
+    
+    if (alerts.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted">
+                <h4>✅ No Active Alerts</h4>
+                <p>All tourists are safe. System monitoring continues...</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = alerts.map(alert => `
+        <div class="alert alert-${alert.alert_type === 'panic' ? 'danger' : 'warning'} mb-3" 
+             style="border-left: 5px solid ${alert.alert_type === 'panic' ? '#dc3545' : '#ffc107'};">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="alert-heading mb-2">
+                        ${alert.alert_type === 'panic' ? '🆘' : '⚠️'} 
+                        ${alert.alert_type.toUpperCase()} ALERT
+                    </h5>
+                    <p class="mb-1"><strong>Tourist:</strong> ${alert.tourist_name} (${alert.tourist_id})</p>
+                    <p class="mb-1"><strong>Phone:</strong> <a href="tel:${alert.tourist_phone}">${alert.tourist_phone}</a></p>
+                    <p class="mb-1"><strong>Time:</strong> ${alert.timestamp}</p>
+                    <p class="mb-0"><strong>Message:</strong> ${alert.message}</p>
+                    ${alert.latitude && alert.longitude ? 
+                        `<p class="mb-0"><strong>Location:</strong> ${alert.latitude.toFixed(4)}, ${alert.longitude.toFixed(4)}</p>` 
+                        : ''}
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-info btn-sm mb-2" onclick="viewAlertDetails(${alert.id})">
+                        📋 View Details
+                    </button><br>
+                    ${alert.latitude && alert.longitude ? 
+                        `<button class="btn btn-primary btn-sm mb-2" onclick="showLocation(${alert.latitude}, ${alert.longitude})">
+                            📍 Show Location
+                        </button><br>` 
+                        : ''}
+                    <button class="btn btn-success btn-sm" onclick="resolveAlert(${alert.id})">
+                        ✅ Resolve
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateLastRefreshTime() {
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent = 
+        `Last update: ${now.toLocaleTimeString()}`;
+}
+
+async function viewAlertDetails(alertId) {
+    currentAlertId = alertId;
+    
+    try {
+        const response = await fetch('/api/alerts');
+        const alerts = await response.json();
+        const alert = alerts.find(a => a.id === alertId);
+        
+        if (alert) {
+            document.getElementById('alertDetailsBody').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Alert Information</h6>
+                        <p><strong>Type:</strong> ${alert.alert_type}</p>
+                        <p><strong>Time:</strong> ${alert.timestamp}</p>
+                        <p><strong>Message:</strong> ${alert.message}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Tourist Information</h6>
+                        <p><strong>Name:</strong> ${alert.tourist_name}</p>
+                        <p><strong>ID:</strong> ${alert.tourist_id}</p>
+                        <p><strong>Phone:</strong> ${alert.tourist_phone}</p>
+                        ${alert.latitude && alert.longitude ? 
+                            `<p><strong>Location:</strong> ${alert.latitude.toFixed(6)}, ${alert.longitude.toFixed(6)}</p>` 
+                            : '<p><strong>Location:</strong> Not available</p>'}
+                    </div>
+                </div>
+            `;
+            
+            new bootstrap.Modal(document.getElementById('alertDetailsModal')).show();
+        }
+    } catch (error) {
+        console.error('Error loading alert details:', error);
+    }
+}
+
+function showLocation(lat, lng) {
+    const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+    window.open(googleMapsUrl, '_blank');
+}
+
+async function resolveAlert(alertId) {
+    if (confirm('Are you sure you want to resolve this alert?')) {
+        try {
+            const response = await fetch(`/api/resolve_alert/${alertId}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                loadAlerts(); // Refresh the alerts list
+                
+                // Close modal if it's open
+                const modal = bootstrap.Modal.getInstance(document.getElementById('alertDetailsModal'));
+                if (modal) {
+                    modal.hide();
+                }
+            }
+        } catch (error) {
+            console.error('Error resolving alert:', error);
+            alert('Error resolving alert. Please try again.');
+        }
+    }
+}
+
+document.getElementById('resolveAlertBtn').addEventListener('click', () => {
+    if (currentAlertId) {
+        resolveAlert(currentAlertId);
+    }
+});
+
+// Handle page visibility change to pause/resume auto-refresh
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(refreshInterval);
+        document.getElementById('refreshStatus').textContent = 'Auto-refresh: PAUSED';
+        document.getElementById('refreshStatus').className = 'badge bg-warning';
+    } else {
+        startAutoRefresh();
+        document.getElementById('refreshStatus').textContent = 'Auto-refresh: ON';
+        document.getElementById('refreshStatus').className = 'badge bg-success';
+        loadAlerts(); // Immediate refresh when page becomes visible
+    }
+});
+</script>
+{% endblock %}

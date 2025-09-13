@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card glow">
+            <div class="card-header">
+                <h3 class="text-glow">👤 Tourist Registration</h3>
+            </div>
+            <div class="card-body">
+                <form id="registerForm">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="phone" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Register & Get Digital ID</button>
+                </form>
+                
+                <hr>
+                
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label class="form-label">Tourist ID</label>
+                        <input type="text" class="form-control" id="loginId" placeholder="Enter your Tourist ID">
+                    </div>
+                    <button type="submit" class="btn btn-success">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div id="qrSection" class="card glow" style="display:none;">
+            <div class="card-header">
+                <h3 class="text-glow">🆔 Your Digital Tourist ID</h3>
+            </div>
+            <div class="card-body text-center">
+                <div id="qrCode"></div>
+                <p class="mt-3"><strong>Tourist ID:</strong> <span id="touristId"></span></p>
+                <p class="text-muted">Save this QR code and ID for verification</p>
+            </div>
+        </div>
+        
+        <div id="touristPanel" class="card glow" style="display:none;">
+            <div class="card-header">
+                <h3 class="text-glow">🛡️ Safety Panel</h3>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <h5>Welcome, <span id="touristName"></span>!</h5>
+                    <p>ID: <span id="currentTouristId"></span></p>
+                </div>
+                
+                <button id="panicBtn" class="btn btn-danger panic-btn w-100 mb-3">
+                    🆘 EMERGENCY PANIC BUTTON
+                </button>
+                
+                <div class="alert alert-info">
+                    <strong>📍 Location Tracking:</strong> <span id="locationStatus">Getting location...</span>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <button id="createGroupBtn" class="btn btn-info w-100">Create Group</button>
+                    </div>
+                    <div class="col-6">
+                        <button id="joinGroupBtn" class="btn btn-warning w-100">Join Group</button>
+                    </div>
+                </div>
+                
+                <div id="groupInfo" class="alert alert-success" style="display:none;">
+                    <strong>👥 Group:</strong> <span id="groupName"></span><br>
+                    <strong>Code:</strong> <span id="groupCode"></span><br>
+                    <button id="showGroupLocationsBtn" class="btn btn-sm btn-outline-primary mt-2 me-2">Show Group Locations</button>
+                    <button id="leaveGroupBtn" class="btn btn-sm btn-outline-danger mt-2">Leave Group</button>
+                </div>
+                
+                <div id="userAlerts" class="alert alert-info" style="display:none;">
+                    <strong>📢 Recent Alerts:</strong>
+                    <div id="alertsList"></div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <strong>⚠️ Emergency Instructions:</strong><br>
+                    • Press panic button only in real emergencies<br>
+                    • Police and ALL users will be notified<br>
+                    • Keep your phone charged and location enabled
+                </div>
+                
+                <div id="mapContainer" class="map-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Group Modals -->
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createGroupForm">
+                    <div class="mb-3">
+                        <label class="form-label">Group Name</label>
+                        <input type="text" class="form-control" id="groupNameInput" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="createGroupSubmit">Create Group</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="joinGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Join Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="joinGroupForm">
+                    <div class="mb-3">
+                        <label class="form-label">Group Code</label>
+                        <input type="text" class="form-control" id="groupCodeInput" placeholder="Enter 6-digit group code" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="joinGroupSubmit">Join Group</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="alertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alert Sent!</h5>
+            </div>
+            <div class="modal-body">
+                <p id="alertMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+@keyframes flash {
+    0% { background-color: #d1ecf1; }
+    50% { background-color: #bee5eb; }
+    100% { background-color: #d1ecf1; }
+}
+</style>
+<script>
+let currentTouristId = null;
+let map = null;
+let userMarker = null;
+let groupMarkers = [];
+
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const response = await fetch('/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: document.getElementById('name').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value
+        })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        document.getElementById('touristId').textContent = data.tourist_id;
+        if (data.qr_code) {
+            document.getElementById('qrCode').innerHTML = `<img src="data:image/png;base64,${data.qr_code}" class="img-fluid">`;
+        } else {
+            document.getElementById('qrCode').innerHTML = `<div class="alert alert-warning">QR Code generation failed. Your Tourist ID is: <strong>${data.tourist_id}</strong></div>`;
+        }
+        document.getElementById('qrSection').style.display = 'block';
+        currentTouristId = data.tourist_id;
+    }
+});
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const response = await fetch('/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            tourist_id: document.getElementById('loginId').value
+        })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        currentTouristId = document.getElementById('loginId').value;
+        document.getElementById('touristName').textContent = data.name;
+        document.getElementById('currentTouristId').textContent = currentTouristId;
+        document.getElementById('touristPanel').style.display = 'block';
+        initMap();
+        startLocationTracking();
+        loadGroupInfo();
+        loadUserAlerts();
+        // Check for alerts every 2 seconds for instant updates
+        setInterval(loadUserAlerts, 2000);
+    } else {
+        alert('Invalid Tourist ID');
+    }
+});
+
+document.getElementById('panicBtn').addEventListener('click', async () => {
+    if (!currentTouristId) return;
+    
+    // Disable button and show loading
+    const panicBtn = document.getElementById('panicBtn');
+    panicBtn.disabled = true;
+    panicBtn.innerHTML = '🔄 Sending Emergency Alert...';
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const response = await fetch('/panic_alert', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tourist_id: currentTouristId,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('alertMessage').innerHTML = `
+                <div class="text-center">
+                    <h5>🚨 Emergency Alert Sent!</h5>
+                    <p>${data.message}</p>
+                    <p><strong>Your Location:</strong><br>
+                    Lat: ${position.coords.latitude.toFixed(6)}<br>
+                    Lng: ${position.coords.longitude.toFixed(6)}</p>
+                    <p class="text-success"><strong>✓ Police and group members have been notified!</strong></p>
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('alertModal')).show();
+            
+            // Force immediate refresh
+            loadUserAlerts();
+            setTimeout(loadUserAlerts, 100);
+            setTimeout(loadUserAlerts, 500);
+            setTimeout(loadUserAlerts, 1000);
+        } else {
+            alert('Failed to send alert. Please try again.');
+        }
+        
+        // Re-enable button after 10 seconds
+        setTimeout(() => {
+            panicBtn.disabled = false;
+            panicBtn.innerHTML = '🆘 EMERGENCY PANIC BUTTON';
+        }, 10000);
+    }, (error) => {
+        // Handle geolocation error
+        fetch('/panic_alert', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tourist_id: currentTouristId,
+                latitude: null,
+                longitude: null
+            })
+        }).then(response => response.json()).then(data => {
+            if (data.success) {
+                document.getElementById('alertMessage').innerHTML = `
+                    <div class="text-center">
+                        <h5>🚨 Emergency Alert Sent!</h5>
+                        <p>${data.message}</p>
+                        <p class="text-warning">Location unavailable, but alert sent!</p>
+                    </div>
+                `;
+                new bootstrap.Modal(document.getElementById('alertModal')).show();
+                
+                // Force immediate refresh
+                loadUserAlerts();
+                setTimeout(loadUserAlerts, 100);
+                setTimeout(loadUserAlerts, 500);
+            } else {
+                alert('Failed to send alert. Please try again.');
+            }
+        });
+        
+        panicBtn.disabled = false;
+        panicBtn.innerHTML = '🆘 EMERGENCY PANIC BUTTON';
+    });
+});
+
+function initMap() {
+    map = L.map('mapContainer').setView([28.6139, 77.2090], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+}
+
+function startLocationTracking() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition((position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            document.getElementById('locationStatus').textContent = `Active (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            
+            if (userMarker) {
+                userMarker.setLatLng([lat, lng]);
+            } else {
+                userMarker = L.marker([lat, lng]).addTo(map).bindPopup('Your Location');
+                map.setView([lat, lng], 15);
+            }
+            
+            // Update location in database
+            fetch('/update_location', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    tourist_id: currentTouristId,
+                    latitude: lat,
+                    longitude: lng
+                })
+            });
+        }, null, {enableHighAccuracy: true, maximumAge: 30000, timeout: 27000});
+    }
+}
+
+// Group functionality
+document.getElementById('createGroupBtn').addEventListener('click', () => {
+    new bootstrap.Modal(document.getElementById('createGroupModal')).show();
+});
+
+document.getElementById('joinGroupBtn').addEventListener('click', () => {
+    new bootstrap.Modal(document.getElementById('joinGroupModal')).show();
+});
+
+document.getElementById('createGroupSubmit').addEventListener('click', async () => {
+    const groupName = document.getElementById('groupNameInput').value;
+    if (!groupName) return;
+    
+    const response = await fetch('/create_group', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: groupName,
+            tourist_id: currentTouristId
+        })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('createGroupModal')).hide();
+        alert(`Group created! Share this code: ${data.group_code}`);
+        loadGroupInfo();
+    } else {
+        alert(data.message);
+    }
+});
+
+document.getElementById('joinGroupSubmit').addEventListener('click', async () => {
+    const groupCode = document.getElementById('groupCodeInput').value;
+    if (!groupCode) return;
+    
+    const response = await fetch('/join_group', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            group_code: groupCode,
+            tourist_id: currentTouristId
+        })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('joinGroupModal')).hide();
+        alert(`Joined group: ${data.group_name}`);
+        loadGroupInfo();
+    } else {
+        alert(data.message);
+    }
+});
+
+document.getElementById('showGroupLocationsBtn').addEventListener('click', () => {
+    showGroupLocationPopup();
+});
+
+document.getElementById('leaveGroupBtn').addEventListener('click', async () => {
+    if (confirm('Are you sure you want to leave this group?')) {
+        const response = await fetch('/leave_group', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tourist_id: currentTouristId
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('groupInfo').style.display = 'none';
+            alert('Left group successfully!');
+        }
+    }
+});
+
+async function loadGroupInfo() {
+    const response = await fetch(`/api/my_group/${currentTouristId}`);
+    const data = await response.json();
+    
+    if (data.has_group) {
+        document.getElementById('groupName').textContent = data.group_name;
+        document.getElementById('groupCode').textContent = data.group_code;
+        document.getElementById('groupInfo').style.display = 'block';
+    }
+}
+
+async function showGroupLocationPopup() {
+    const response = await fetch(`/api/group_locations/${currentTouristId}`);
+    const locations = await response.json();
+    
+    if (locations.length === 0) {
+        alert('No group members found or you are not in a group.');
+        return;
+    }
+    
+    // Create popup modal
+    const popupHtml = `
+        <div class="modal fade" id="groupLocationModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Group Member Locations</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="groupLocationMap" style="height: 400px; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('groupLocationModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', popupHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('groupLocationModal'));
+    modal.show();
+    
+    // Initialize map after modal is shown
+    document.getElementById('groupLocationModal').addEventListener('shown.bs.modal', () => {
+        const popupMap = L.map('groupLocationMap').setView([locations[0].latitude, locations[0].longitude], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(popupMap);
+        
+        const markers = [];
+        locations.forEach(location => {
+            const marker = L.marker([location.latitude, location.longitude])
+                .addTo(popupMap)
+                .bindPopup(`<strong>${location.name}</strong><br>ID: ${location.tourist_id}<br>Last seen: ${location.timestamp}`);
+            markers.push(marker);
+        });
+        
+        if (markers.length > 1) {
+            const group = new L.featureGroup(markers);
+            popupMap.fitBounds(group.getBounds().pad(0.1));
+        }
+    });
+}
+
+async function loadUserAlerts() {
+    if (!currentTouristId) return;
+    
+    try {
+        const response = await fetch(`/api/user_alerts/${currentTouristId}`);
+        const alerts = await response.json();
+        
+        console.log('Loaded alerts:', alerts); // Debug log
+        
+        if (alerts.length > 0) {
+            const alertsHtml = alerts.map(alert => 
+                `<small><strong>${alert.timestamp}</strong> - ${alert.message}</small>`
+            ).join('<br>');
+            
+            document.getElementById('alertsList').innerHTML = alertsHtml;
+            document.getElementById('userAlerts').style.display = 'block';
+            
+            // Flash the alert box to show new alerts
+            const alertBox = document.getElementById('userAlerts');
+            alertBox.style.animation = 'none';
+            setTimeout(() => {
+                alertBox.style.animation = 'flash 0.5s ease-in-out';
+            }, 10);
+        } else {
+            // Keep alert box visible but show "no alerts" message
+            document.getElementById('alertsList').innerHTML = '<small class="text-muted">No recent alerts</small>';
+            document.getElementById('userAlerts').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+        document.getElementById('alertsList').innerHTML = '<small class="text-danger">Error loading alerts</small>';
+        document.getElementById('userAlerts').style.display = 'block';
+    }
+}
+</script>
+{% endblock %}

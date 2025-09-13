@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card glow">
+            <div class="card-header">
+                <h3 class="text-glow">🗺️ Live Tourist Heatmap</h3>
+            </div>
+            <div class="card-body">
+                <div id="dashboardMap" class="map-container"></div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 glow">
+            <div class="card-header">
+                <h3 class="text-glow">👥 Registered Tourists</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tourist ID</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody id="touristsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 glow">
+            <div class="card-header">
+                <h3 class="text-glow">📋 E-FIR Records</h3>
+                <button class="btn btn-sm btn-outline-primary" onclick="loadIncidents()">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>E-FIR Number</th>
+                                <th>Tourist ID</th>
+                                <th>Incident Type</th>
+                                <th>Description</th>
+                                <th>Date/Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card glow">
+            <div class="card-header">
+                <h3 class="text-glow">🚨 Active Alerts</h3>
+                <button class="btn btn-sm btn-outline-primary" onclick="loadAlerts()">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div id="alertsList"></div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 glow">
+            <div class="card-header">
+                <h3 class="text-glow">📋 Create E-FIR</h3>
+                <small class="text-muted">Click tourist ID from alerts to auto-fill</small>
+            </div>
+            <div class="card-body">
+                <form id="efirForm">
+                    <div class="mb-3">
+                        <label class="form-label">Tourist ID</label>
+                        <input type="text" class="form-control" id="efirTouristId" required>
+                        <small class="text-muted">Click on tourist ID in alerts to auto-fill</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Incident Type</label>
+                        <select class="form-control" id="incidentType" required>
+                            <option value="">Select Type</option>
+                            <option value="theft">Theft</option>
+                            <option value="assault">Assault</option>
+                            <option value="missing">Missing Person</option>
+                            <option value="accident">Accident</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-warning">Create E-FIR</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="efirModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">E-FIR Created</h5>
+            </div>
+            <div class="modal-body">
+                <p>E-FIR Number: <strong id="efirNumber"></strong></p>
+                <p>The incident has been logged successfully.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dashboardMap = null;
+let touristMarkers = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDashboardMap();
+    loadTourists();
+    loadAlerts();
+    loadLocations();
+    loadIncidents();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        loadAlerts();
+        loadLocations();
+    }, 30000);
+});
+
+function initDashboardMap() {
+    dashboardMap = L.map('dashboardMap').setView([28.6139, 77.2090], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(dashboardMap);
+}
+
+async function loadTourists() {
+    const response = await fetch('/api/tourists');
+    const tourists = await response.json();
+    
+    const tbody = document.getElementById('touristsTable');
+    tbody.innerHTML = tourists.map(t => `
+        <tr>
+            <td>${t.tourist_id}</td>
+            <td>${t.name}</td>
+            <td>${t.phone}</td>
+            <td>${t.created_at}</td>
+        </tr>
+    `).join('');
+}
+
+async function loadLocations() {
+    const response = await fetch('/api/locations');
+    const locations = await response.json();
+    
+    // Clear existing markers
+    Object.values(touristMarkers).forEach(marker => dashboardMap.removeLayer(marker));
+    touristMarkers = {};
+    
+    // Add new markers
+    locations.forEach(loc => {
+        const marker = L.marker([loc.latitude, loc.longitude])
+            .addTo(dashboardMap)
+            .bindPopup(`Tourist: ${loc.tourist_id}<br>Time: ${loc.timestamp}`);
+        touristMarkers[loc.tourist_id] = marker;
+    });
+}
+
+async function loadAlerts() {
+    const response = await fetch('/api/alerts');
+    const alerts = await response.json();
+    
+    const alertsList = document.getElementById('alertsList');
+    if (alerts.length === 0) {
+        alertsList.innerHTML = '<p class="text-muted">No active alerts</p>';
+        return;
+    }
+    
+    alertsList.innerHTML = alerts.map(alert => `
+        <div class="alert alert-card alert-${alert.alert_type === 'panic' ? 'danger' : 'warning'} mb-2">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${alert.alert_type.toUpperCase()}</strong><br>
+                    <small><strong>Name:</strong> ${alert.tourist_name}</small><br>
+                    <small><strong>ID:</strong> <span class="tourist-id-link" onclick="fillEfirForm('${alert.tourist_id}')" style="cursor:pointer;color:blue;text-decoration:underline;">${alert.tourist_id}</span></small><br>
+                    <small><strong>Phone:</strong> <a href="tel:${alert.tourist_phone}">${alert.tourist_phone}</a></small><br>
+                    <small><strong>Time:</strong> ${alert.timestamp}</small><br>
+                    <em>${alert.message}</em>
+                    ${alert.latitude && alert.longitude ? `<br><small><strong>Location:</strong> ${alert.latitude.toFixed(4)}, ${alert.longitude.toFixed(4)}</small>` : ''}
+                </div>
+                <div>
+                    ${alert.latitude && alert.longitude ? `<button class="btn btn-sm btn-info mb-1" onclick="showAlertLocation(${alert.latitude}, ${alert.longitude}, '${alert.tourist_name}')">📍 Show</button><br>` : ''}
+                    <button class="btn btn-sm btn-outline-success" onclick="resolveAlert(${alert.id})">
+                        Resolve
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function resolveAlert(alertId) {
+    const response = await fetch(`/api/resolve_alert/${alertId}`, {method: 'POST'});
+    if (response.ok) {
+        loadAlerts();
+    }
+}
+
+function fillEfirForm(touristId) {
+    document.getElementById('efirTouristId').value = touristId;
+    document.getElementById('efirTouristId').focus();
+}
+
+function showAlertLocation(lat, lng, touristName) {
+    // Center map on alert location
+    dashboardMap.setView([lat, lng], 16);
+    
+    // Add or update alert marker
+    const alertMarker = L.marker([lat, lng], {
+        icon: L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        })
+    }).addTo(dashboardMap)
+      .bindPopup(`🚨 ALERT: ${touristName}<br>Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+      .openPopup();
+    
+    // Remove marker after 10 seconds
+    setTimeout(() => {
+        dashboardMap.removeLayer(alertMarker);
+    }, 10000);
+}
+
+document.getElementById('efirForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const response = await fetch('/api/create_incident', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            tourist_id: document.getElementById('efirTouristId').value,
+            incident_type: document.getElementById('incidentType').value,
+            description: document.getElementById('description').value
+        })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        document.getElementById('efirNumber').textContent = data.efir_number;
+        new bootstrap.Modal(document.getElementById('efirModal')).show();
+        document.getElementById('efirForm').reset();
+        loadIncidents(); // Refresh E-FIR list
+    }
+});
+
+async function loadIncidents() {
+    const response = await fetch('/api/incidents');
+    const incidents = await response.json();
+    
+    const tbody = document.getElementById('incidentsTable');
+    if (incidents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No E-FIR records found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = incidents.map(i => `
+        <tr>
+            <td><strong>${i.efir_number}</strong></td>
+            <td>${i.tourist_id}</td>
+            <td><span class="badge bg-warning">${i.incident_type}</span></td>
+            <td>${i.description.length > 50 ? i.description.substring(0, 50) + '...' : i.description}</td>
+            <td>${i.timestamp}</td>
+        </tr>
+    `).join('');
+}
+</script>
+{% endblock %}
